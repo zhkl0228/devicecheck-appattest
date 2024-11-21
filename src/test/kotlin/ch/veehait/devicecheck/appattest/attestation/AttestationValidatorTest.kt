@@ -279,7 +279,7 @@ class AttestationValidatorTest : FreeSpec() {
                         attestationValidator.validateAsync(
                             attestationObject = sample.attestation,
                             keyIdBase64 = sample.keyId.toBase64(),
-                            serverChallenge = sample.clientData,
+                            clientDataHash = sample.clientData.sha256(),
                         )
                     }
                 }

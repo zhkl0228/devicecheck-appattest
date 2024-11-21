@@ -110,7 +110,15 @@ interface AttestationValidator {
         keyIdBase64: String,
         serverChallenge: ByteArray,
     ): ValidatedAttestation = runBlocking {
-        validateAsync(attestationObject, keyIdBase64, serverChallenge)
+        validateAsync(attestationObject, keyIdBase64, serverChallenge.sha256())
+    }
+
+    fun validateClientDataHash(
+        attestationObject: ByteArray,
+        keyIdBase64: String,
+        clientDataHash: ByteArray,
+    ): ValidatedAttestation = runBlocking {
+        validateAsync(attestationObject, keyIdBase64, clientDataHash)
     }
 
     /**
@@ -121,7 +129,7 @@ interface AttestationValidator {
     suspend fun validateAsync(
         attestationObject: ByteArray,
         keyIdBase64: String,
-        serverChallenge: ByteArray,
+        clientDataHash: ByteArray,
     ): ValidatedAttestation
 }
 
@@ -145,14 +153,14 @@ internal class AttestationValidatorImpl(
     override suspend fun validateAsync(
         attestationObject: ByteArray,
         keyIdBase64: String,
-        serverChallenge: ByteArray,
+        clientDataHash: ByteArray,
     ): ValidatedAttestation = coroutineScope {
         val attestation = parseAttestationObject(attestationObject)
         val keyId = keyIdBase64.fromBase64()
 
         launch { verifyAttestationFormat(attestation) }
         launch { verifyCertificateChain(attestation) }
-        launch { verifyNonce(attestation, serverChallenge) }
+        launch { verifyNonce(attestation, clientDataHash) }
         val credCert = async { verifyAttestationCertificate(attestation, keyId) }
         launch { verifyAuthenticatorData(attestation, keyId) }
         val receipt = async { validateAttestationReceiptAsync(attestation) }
@@ -203,11 +211,7 @@ internal class AttestationValidatorImpl(
         return octetString.octets
     }
 
-    private fun verifyNonce(attestationObject: AttestationObject, serverChallenge: ByteArray) {
-        // 2. Create clientDataHash as the SHA256 hash of the one-time challenge sent to your app before performing
-        //    the attestation, ...
-        val clientDataHash = serverChallenge.sha256()
-
+    private fun verifyNonce(attestationObject: AttestationObject, clientDataHash: ByteArray) {
         //    ... and append that hash to the end of the authenticator data (authData from the decoded object).
         // 3. Generate a new SHA256 hash of the composite item to create nonce.
         val expectedNonce = attestationObject.authData.plus(clientDataHash).sha256()

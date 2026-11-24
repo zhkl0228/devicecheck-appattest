@@ -1,14 +1,15 @@
-import java.net.URL
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.8.20"
-    id("io.gitlab.arturbosch.detekt") version "1.22.0"
-    id("org.jmailen.kotlinter") version "3.14.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.21"
+    id("dev.detekt") version "2.0.0-alpha.6"
+    id("org.jmailen.kotlinter") version "5.7.0"
     id("jacoco")
-    id("com.github.ben-manes.versions") version "0.46.0"
-    id("org.jetbrains.dokka") version "1.8.10"
-    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
+    id("io.github.ben-manes.versions") version "0.67.0"
+    id("org.jetbrains.dokka") version "2.3.0"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 
     // Apply the java-library plugin for API and implementation separation.
     `java-library`
@@ -24,6 +25,15 @@ java {
     withJavadocJar()
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_11
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+
+        // For creation of default methods in interfaces
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+    }
 }
 
 allprojects {
@@ -81,11 +91,9 @@ nexusPublishing {
             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 
             // env: ORG_GRADLE_PROJECT_sonatypeUsername
-            val sonatypeUsername: String? by project
-            username.set(sonatypeUsername)
+            username.set(project.findProperty("sonatypeUsername") as String?)
             // env: ORG_GRADLE_PROJECT_sonatypePassword
-            val sonatypePassword: String? by project
-            password.set(sonatypePassword)
+            password.set(project.findProperty("sonatypePassword") as String?)
         }
     }
 }
@@ -118,13 +126,13 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion")
 
     // Kotest
-    val kotestVersion = "5.4.2"
+    val kotestVersion = "5.9.1"
     testImplementation("io.kotest:kotest-runner-junit5-jvm:$kotestVersion") // for kotest framework
     testImplementation("io.kotest:kotest-assertions-core-jvm:$kotestVersion") // for kotest core jvm assertions
     testImplementation("io.kotest:kotest-property-jvm:$kotestVersion") // for kotest property test
 
     // Testing of equals / hashcode
-    testImplementation("nl.jqno.equalsverifier:equalsverifier:3.10.1")
+    testImplementation("nl.jqno.equalsverifier:equalsverifier:3.19.4")
 
     // MockWebServer
     testImplementation("com.squareup.okhttp3:mockwebserver:4.10.0")
@@ -141,18 +149,17 @@ dependencyLocking {
     lockAllConfigurations()
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "11"
-
-        // For creation of default methods in interfaces
-        freeCompilerArgs = listOf("-Xjvm-default=all")
-    }
-}
-
 detekt {
     autoCorrect = true
     buildUponDefaultConfig = true
+}
+
+// detekt's own Kotlin compiler takes the running JDK for the target, which it may not know
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+    jvmTarget = "11"
+}
+tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach {
+    jvmTarget = "11"
 }
 
 tasks.withType<Test> {
@@ -164,7 +171,7 @@ tasks.test {
 }
 
 jacoco {
-    toolVersion = "0.8.7"
+    toolVersion = "0.8.16"
 }
 
 tasks.jacocoTestReport {
@@ -174,18 +181,18 @@ tasks.jacocoTestReport {
     }
 }
 
-tasks.dokkaHtml.configure {
-    outputDirectory.set(buildDir.resolve("dokka"))
-
+dokka {
     moduleName.set("Apple App Attest Kotlin Library")
 
-    dokkaSourceSets {
-        named("main") {
-            sourceLink {
-                localDirectory.set(file("src/main/kotlin"))
-                remoteUrl.set(URL("https://github.com/veehaitch/devicecheck-appattest/tree/main/src/main/kotlin"))
-                remoteLineSuffix.set("#L")
-            }
+    dokkaPublications.html {
+        outputDirectory.set(layout.buildDirectory.dir("dokka"))
+    }
+
+    dokkaSourceSets.main {
+        sourceLink {
+            localDirectory.set(file("src/main/kotlin"))
+            remoteUrl("https://github.com/veehaitch/devicecheck-appattest/tree/main/src/main/kotlin")
+            remoteLineSuffix.set("#L")
         }
     }
 }

@@ -27,6 +27,9 @@ hs_err_pid*
 **/build/
 !src/**/build/
 
+# Kotlin 2's per-project data (compiler daemon sessions, errors)
+.kotlin/
+
 # Ignore Gradle GUI config
 gradle-app.setting
 

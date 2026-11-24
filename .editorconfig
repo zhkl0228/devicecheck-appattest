@@ -8,6 +8,14 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 max_line_length = 120
+# ktlint 1.x defaults to ktlint_official; keep the style the code was written in
+ktlint_code_style = intellij_idea
+# Rules ktlint 0.48 (kotlinter 3) did not have
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_function-expression-body = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+ktlint_standard_enum-wrapping = disabled
 
 [*.yml]
 indent_style = space
